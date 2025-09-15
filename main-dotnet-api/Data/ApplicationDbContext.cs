@@ -13,6 +13,10 @@ namespace main_dotnet_api.Data
 
         public DbSet<Category> Categories { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -49,6 +53,99 @@ namespace main_dotnet_api.Data
 
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.CategoryId);
+            });
+
+            // Configure Cart entity
+            modelBuilder.Entity<Cart>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.Property(e => e.UpdatedAt).IsRequired();
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+                // Configure relationship with ApplicationUser
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId);
+            });
+
+            // Configure CartItem entity
+            modelBuilder.Entity<CartItem>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Quantity).IsRequired();
+                entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.AddedAt).IsRequired();
+                entity.Property(e => e.UpdatedAt).IsRequired();
+
+                // Configure relationship with Cart
+                entity.HasOne(e => e.Cart)
+                      .WithMany(e => e.CartItems)
+                      .HasForeignKey(e => e.CartId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Configure relationship with Product
+                entity.HasOne(e => e.Product)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProductId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.CartId);
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => new { e.CartId, e.ProductId }).IsUnique(); // Prevent duplicate items
+            });
+
+            // Configure Order entity
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.OrderNumber).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.SubTotal).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.TaxAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.DiscountAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.CreatedAt).IsRequired();
+
+                // Configure relationship with ApplicationUser
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.OrderNumber).IsUnique();
+                entity.HasIndex(e => e.Status);
+            });
+
+            // Configure OrderItem entity
+            modelBuilder.Entity<OrderItem>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ProductName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Quantity).IsRequired();
+                entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)").IsRequired();
+
+                // Configure relationship with Order
+                entity.HasOne(e => e.Order)
+                      .WithMany(e => e.OrderItems)
+                      .HasForeignKey(e => e.OrderId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Configure relationship with Product
+                entity.HasOne(e => e.Product)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProductId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.OrderId);
+                entity.HasIndex(e => e.ProductId);
             });
 
             // Configure ApplicationUser
